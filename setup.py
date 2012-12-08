@@ -1,4 +1,5 @@
 from distutils.core import setup, Command
+import os
 
 class PyTest(Command):
 	user_options = []
@@ -13,7 +14,7 @@ class PyTest(Command):
 
 setup(
 	name = 'app55',
-	version = '0.8.3',
+	version = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'VERSION')).read().strip(),
 	description = 'App55 API Client for Python',
 	author = 'App55',
 	author_email = 'support@app55.com',
