@@ -42,7 +42,7 @@ def test_list_cards():
 		assert request.get_method() == 'GET'
 		assert request.get_full_url() == 'http://127.0.0.1:0/v1/card?user.id=1'
 		assert request.get_data() is None 
-		return '{"a":1,"cards":[{"token":1},{"token":2}],"api_key":"API_KEY","sig":"F4cz8QVndl1MfC-MiBD6MXAyleM=","ts":"20130101000000"}'
+		return '{"a":1,"cards":[{"token":1},{"token":2}],"api_key":"API_KEY","sig":"3OEFjKOcTVlrhwC0mgNVX9sRORo=","ts":"20130101000000"}'
 	gateway.url_opener.open = urlopener(callback)
 	response = gateway.list_cards(
 		user = dao.User(
