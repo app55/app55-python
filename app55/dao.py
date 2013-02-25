@@ -26,6 +26,9 @@ class Card(DAO):
 class Transaction(DAO):
 	pass
 
+class Schedule(DAO):
+	pass
+
 class Currency(object):
 	all = []	
 

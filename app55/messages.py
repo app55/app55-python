@@ -96,6 +96,7 @@ class Request(Message):
 		try:
 			response = self._gateway.url_opener.open(request)
 		except urllib2.HTTPError, e:
+			print e
 			response = e.read()			
 		else:
 			response = response.read()
@@ -243,3 +244,66 @@ class UserUpdateRequest(Request):
 	def method(self):
 		return 'POST'
 gateway.Gateway.update_user = lambda gateway, **kwargs: UserUpdateRequest(gateway, **kwargs)
+
+class ScheduleCreateRequest(Request):
+	def __init__(self, gateway, **kwargs):
+		super(ScheduleCreateRequest, self).__init__(gateway, **kwargs)
+
+	@property
+	def endpoint(self):
+		return super(ScheduleCreateRequest, self).endpoint % '/schedule'
+
+	@property
+	def method(self):
+		return 'POST'
+gateway.Gateway.create_schedule = lambda gateway, **kwargs: ScheduleCreateRequest(gateway, **kwargs)
+
+class ScheduleListRequest(Request):
+	def __init__(self, gateway, **kwargs):
+		super(ScheduleListRequest, self).__init__(gateway, **kwargs)
+
+	@property
+	def endpoint(self):
+		return super(ScheduleListRequest, self).endpoint % '/schedule'
+gateway.Gateway.list_schedules = lambda gateway, **kwargs: ScheduleListRequest(gateway, **kwargs)
+
+class ScheduleGetRequest(Request):
+	def __init__(self, gateway, schedule=None, **kwargs):
+		self.id = schedule.id
+		del schedule.id
+		super(ScheduleGetRequest, self).__init__(gateway, schedule=schedule, **kwargs)
+
+	@property
+	def endpoint(self):
+		return super(ScheduleGetRequest, self).endpoint % ('/schedule/%s' % self.id)
+gateway.Gateway.get_schedule = lambda gateway, **kwargs: ScheduleGetRequest(gateway, **kwargs)
+
+class ScheduleUpdateRequest(Request):
+	def __init__(self, gateway, schedule=None, **kwargs):
+		self.id = schedule.id
+		del schedule.id
+		super(ScheduleUpdateRequest, self).__init__(gateway, schedule=schedule, **kwargs)
+
+	@property
+	def endpoint(self):
+		return super(ScheduleUpdateRequest, self).endpoint % ('/schedule/%s' % self.id)
+
+	@property
+	def method(self):
+		return 'POST'
+gateway.Gateway.update_schedule = lambda gateway, **kwargs: ScheduleUpdateRequest(gateway, **kwargs)
+
+class ScheduleDeleteRequest(Request):
+	def __init__(self, gateway, schedule=None, **kwargs):
+		self.id = schedule.id
+		del schedule.id
+		super(ScheduleDeleteRequest, self).__init__(gateway, schedule=schedule, **kwargs)
+
+	@property
+	def endpoint(self):
+		return super(ScheduleDeleteRequest, self).endpoint % ('/schedule/%s' % self.id)
+
+	@property
+	def method(self):
+		return 'DELETE'
+gateway.Gateway.delete_schedule = lambda gateway, **kwargs: ScheduleDeleteRequest(gateway, **kwargs)
