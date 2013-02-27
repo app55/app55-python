@@ -38,7 +38,10 @@ def to_dotted(dictin, path=None):
 			dictout.update(to_dotted_array(v, key))
 		else:
 			if v is not None:
-				dictout[key] = v
+				if isinstance(v, bool):
+					dictout[key] = 'true' if v else 'false'
+				else:
+					dictout[key] = v
 	return dictout
 		
 class Message(object):
