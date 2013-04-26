@@ -127,7 +127,7 @@ class Response(Message):
 		sig = None
 
 		if qs:
-			for k, v in dict((k, v[0]) for k, v in urlparse.parse_qs(qs).iteritems()).iteritems():
+			for k, v in (dict((k, v[0]) for k, v in urlparse.parse_qs(qs).iteritems()) if isinstance(qs, basestring) else dict((k, v) for k, v in qs.iteritems())).iteritems():
 				d = kwargs
 				k = k.split('.')
 				for i in range(0, len(k) - 1):

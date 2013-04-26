@@ -1,4 +1,4 @@
-import os, sys
+import os, sys, time
 sys.path.insert(0, os.path.dirname(__file__)) 
 
 import app55
@@ -195,7 +195,8 @@ if __name__ == '__main__':
 	schedule1 = create_schedule(user, card1).schedule
 	schedule = get_schedule(user, schedule1).schedule
 	assert schedule.end is None
-	assert schedule.next == datetime.utcnow().strftime('%Y-%m-%d')
+	time.sleep(5)
+	assert schedule.next == (datetime.utcnow() + timedelta(days=1)).strftime('%Y-%m-%d')
 	assert schedule.units == 1
 	update_schedule(user, card2, app55.Schedule(
 		id = schedule.id,
