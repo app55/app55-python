@@ -6,12 +6,14 @@ from datetime import datetime, timedelta
 
 gateway = app55.Gateway(getattr(app55.Environment, os.environ.get('APP55_API_ENVIRONMENT', 'Development')), os.environ.get('APP55_API_KEY'), os.environ.get('APP55_API_SECRET')) 
 
-def create_user(email=lambda: 'example.%s@app55.com' % datetime.utcnow().strftime('%Y%m%d%H%M%S'), phone=lambda: '0123 456 7890', password=lambda: 'pa55word', confirm_password=None):
+def create_user(email=lambda: 'example.%s@app55.com' % datetime.utcnow().strftime('%Y%m%d%H%M%S'), phone=lambda: '0123 456 7890', password=lambda: 'pa55word', confirm_password=None, first_name=lambda: 'APP55', last_name=lambda: 'USER'):
 	email = email() if callable(email) else email
 	phone = phone() if callable(phone) else phone
 	password = password() if callable(password) else password
 	confirm_password = confirm_password if callable(confirm_password) else confirm_password
 	confirm_password = confirm_password or password
+	first_name = first_name() if callable(first_name) else first_name
+	last_name = last_name() if callable(last_name) else last_name
 
 	print "Creating user %s..." % email,
 	
@@ -26,9 +28,21 @@ def create_user(email=lambda: 'example.%s@app55.com' % datetime.utcnow().strftim
 	print "DONE (user-id %s)" % response.user.id
 	return response
 
-def create_card(user):
+def get_user(id):
+	print "Getting user %s..." % id,
+
+	response = gateway.get_user(
+		user = app55.User(
+			id = id
+		)
+	).send()
+	print "DONE"
+	return response
+
+def create_card(user, ip_address=None):
 	print "Creating card...",
 	response = gateway.create_card(
+		ip_address = ip_address,
 		user = app55.User(
 			id = user.id
 		),
@@ -71,9 +85,10 @@ def delete_card(user, card):
 	print "DONE"
 	return response
 
-def create_transaction(user, card):
+def create_transaction(user, card, id=None, source=None, type=None, ip_address=None):
 	print "Creating transaction...",
 	response = gateway.create_transaction(
+		ip_address = ip_address,
 		user = app55.User(
 			id = user.id,
 		),
@@ -81,8 +96,11 @@ def create_transaction(user, card):
 			token = card.token,
 		),
 		transaction = app55.Transaction(
+			id = id,
+			source = source,
+			type = type,
 			amount = "0.10",
-			currency = 'GBP',
+			currency = 'EUR',
 		),
 	).send()
 	print "DONE (transaction-id %s)" % response.transaction.id
@@ -98,7 +116,7 @@ def commit_transaction(transaction):
 	print "DONE"
 	return response
 
-def create_schedule(user, card):
+def create_schedule(user, card, amount='0.10'):
 	print "Creating schedule...",
 	response = gateway.create_schedule(
 		user = app55.User(
@@ -108,8 +126,8 @@ def create_schedule(user, card):
 			token = card.token
 		),
 		transaction = app55.Transaction(
-			amount = '0.10',
-			currency = 'GBP',
+			amount = amount,
+			currency = 'EUR',
 			description = 'Scheduled Transaction'
 		),
 		schedule = app55.Schedule(
@@ -174,28 +192,79 @@ def delete_schedule(user, schedule):
 	print "DONE"
 	return response
 
+def multiple_transactions(user, card, *types):
+	print "Testing transactions of types", types
+	transaction = app55.Transaction(id=None)
+	for type in types:
+		transaction = create_transaction(user, card, id=transaction.id, type=type, ip_address='127.0.0.1').transaction
+		commit_transaction(transaction)
+	return transaction
+
+def duplicate_transactions(user, card, *types):
+	try:
+		multiple_transactions(user, card, *types)
+		raise AssertionError()
+	except app55.RequestException, e:
+		assert e.message == 'Duplicate transaction.', e.message
+
 if __name__ == '__main__':
+
 	print "App55 Sandbox - API Key <%s>" % gateway.api_key
 	print
+	
 	user = create_user().user
-	card1 = create_card(user).card
-	transaction = create_transaction(user, card1).transaction
+	user_check = get_user(user.id).user
+	assert user.id == user_check.id
+	assert user.email == user_check.email
+	assert user.name.first == user_check.name.first
+	assert user.name.last == user_check.name.last
+
+	card1 = create_card(user, ip_address='127.0.0.1').card
+	transaction = create_transaction(user, card1, ip_address='127.0.0.1').transaction
 	commit_transaction(transaction)
 
-	card2 = create_card(user).card
-	transaction = create_transaction(user, card2).transaction
+	card2 = create_card(user, ip_address='127.0.0.1').card
+	transaction = create_transaction(user, card2, ip_address='127.0.0.1').transaction
 	commit_transaction(transaction)
 
-	card3 = create_card(user).card
-	transaction = create_transaction(user, card3).transaction
+	card3 = create_card(user, ip_address='127.0.0.1').card
+	transaction = create_transaction(user, card3, ip_address='127.0.0.1').transaction
 	commit_transaction(transaction)
+
+	multiple_transactions(user, card3, 'auth', 'capture', 'void')
+	multiple_transactions(user, card3, 'auth', 'void')
+	multiple_transactions(user, card3, 'sale', 'void')
+	duplicate_transactions(user, card3, 'sale', 'sale')
+	duplicate_transactions(user, card3, 'sale', 'auth')
+	duplicate_transactions(user, card3, 'sale', 'capture')
+	duplicate_transactions(user, card3, 'auth', 'sale')
+	duplicate_transactions(user, card3, 'auth', 'auth')
+	duplicate_transactions(user, card3, 'auth', 'capture', 'sale')
+	duplicate_transactions(user, card3, 'auth', 'capture', 'auth')
+	duplicate_transactions(user, card3, 'auth', 'capture', 'capture')
+	duplicate_transactions(user, card3, 'sale', 'void', 'void')
+	duplicate_transactions(user, card3, 'auth', 'void', 'void')
+	duplicate_transactions(user, card3, 'auth', 'capture', 'void', 'void')
+	try:
+		multiple_transactions(user, card3, 'capture')
+		raise AssertionError()
+	except app55.CardException, e:
+		assert e.message == 'The payment could not be processed.', e.message	
+	try:
+		multiple_transactions(user, card3, 'void')
+		raise AssertionError()
+	except app55.CardException, e:
+		assert e.message == 'The payment could not be processed.', e.message
+
+
+	
 
 
 
 	schedule1 = create_schedule(user, card1).schedule
+	time.sleep(5)
 	schedule = get_schedule(user, schedule1).schedule
 	assert schedule.end is None
-	time.sleep(5)
 	assert schedule.next == (datetime.utcnow() + timedelta(days=1)).strftime('%Y-%m-%d')
 	assert schedule.units == 1
 	update_schedule(user, card2, app55.Schedule(
@@ -205,8 +274,8 @@ if __name__ == '__main__':
 	response = get_schedule(user, schedule)
 	assert response.schedule.end == (datetime.utcnow() + timedelta(days=1)).strftime('%Y-%m-%d')
 	assert response.card.token == card2.token
-	schedule2 = create_schedule(user, card1).schedule
-	schedule3 = create_schedule(user, card3).schedule
+	schedule2 = create_schedule(user, card1, amount='0.11').schedule
+	schedule3 = create_schedule(user, card3, amount='0.12').schedule
 	schedules = list_schedules(user).schedules
 	schedules = [schedule.id for schedule in schedules]
 	assert schedule1.id in schedules

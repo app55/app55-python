@@ -248,6 +248,17 @@ class UserUpdateRequest(Request):
 		return 'POST'
 gateway.Gateway.update_user = lambda gateway, **kwargs: UserUpdateRequest(gateway, **kwargs)
 
+class UserGetRequest(Request):
+	def __init__(self, gateway, user=None, **kwargs):
+		self.id = user.id
+		del user.id
+		super(UserGetRequest, self).__init__(gateway, user=user, **kwargs)
+
+	@property
+	def endpoint(self):
+		return super(UserGetRequest, self).endpoint % ('/user/%s' % self.id)
+gateway.Gateway.get_user = lambda gateway, **kwargs: UserGetRequest(gateway, **kwargs)
+
 class ScheduleCreateRequest(Request):
 	def __init__(self, gateway, **kwargs):
 		super(ScheduleCreateRequest, self).__init__(gateway, **kwargs)
