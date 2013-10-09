@@ -106,6 +106,36 @@ def create_transaction(user, card, id=None, source=None, type=None, ip_address=N
 	print "DONE (transaction-id %s)" % response.transaction.id
 	return response
 
+def create_anonymous_transaction(card = None, id=None, source=None, type=None, ip_address=None, email=None):
+	print "Creating anonymous transaction...",
+	response = gateway.create_transaction(
+		ip_address = ip_address,
+		user = app55.User(
+			email = email,
+		),
+		card = card or app55.Card(
+			holder_name = 'App55 User',
+			number = '4111111111111111',
+			expiry = (datetime.utcnow() + timedelta(days=90)).strftime('%m/%Y'),
+			security_code = '111',
+			address = app55.Address(
+				street = '8 Exchange Quay',
+				city = 'Manchester',
+				postal_code = 'M5 3EJ',
+				country = 'GB',
+			),
+		),
+		transaction = app55.Transaction(
+			id = id,
+			source = source,
+			type = type,
+			amount = '0.10',
+			currency = 'EUR',
+		),
+	).send()
+	print "DONE (transaction-id %s)" % response.transaction.id
+	return response
+
 def commit_transaction(transaction):
 	print "Committing transaction...",
 	response = gateway.commit_transaction(
@@ -207,11 +237,29 @@ def duplicate_transactions(user, card, *types):
 	except app55.RequestException, e:
 		assert e.message == 'Duplicate transaction.', e.message
 
+def multiple_anonymous_transactions(*types):
+	print "Testing anonymous transactions of types", types
+	transaction = app55.Transaction(id=None)
+	for type in types:
+		transaction = create_anonymous_transaction(id=transaction.id, type=type, ip_address='127.0.0.1', email='example@app55.com').transaction
+		commit_transaction(transaction)
+	return transaction
+
+def duplicate_anonymous_transactions(*types):
+	try:
+		multiple_anonymous_transactions(*types)
+		raise AssertionError()
+	except app55.RequestException, e:
+		assert e.message == 'Duplicate transaction.', e.message
+
 if __name__ == '__main__':
 
 	print "App55 Sandbox - API Key <%s>" % gateway.api_key
 	print
 	
+	transaction = create_anonymous_transaction(ip_address='127.0.0.1').transaction
+	commit_transaction(transaction)
+
 	user = create_user().user
 	user_check = get_user(user.id).user
 	assert user.id == user_check.id
@@ -229,6 +277,9 @@ if __name__ == '__main__':
 
 	card3 = create_card(user, ip_address='127.0.0.1').card
 	transaction = create_transaction(user, card3, ip_address='127.0.0.1').transaction
+	commit_transaction(transaction)
+
+	transaction = create_anonymous_transaction(ip_address='127.0.0.1').transaction
 	commit_transaction(transaction)
 
 	multiple_transactions(user, card3, 'auth', 'capture', 'void')
@@ -252,6 +303,31 @@ if __name__ == '__main__':
 		assert e.message == 'The payment could not be processed.', e.message	
 	try:
 		multiple_transactions(user, card3, 'void')
+		raise AssertionError()
+	except app55.CardException, e:
+		assert e.message == 'The payment could not be processed.', e.message
+
+	multiple_anonymous_transactions('auth', 'capture', 'void')
+	multiple_anonymous_transactions('auth', 'void')
+	multiple_anonymous_transactions('sale', 'void')
+	duplicate_anonymous_transactions('sale', 'sale')
+	duplicate_anonymous_transactions('sale', 'auth')
+	duplicate_anonymous_transactions('sale', 'capture')
+	duplicate_anonymous_transactions('auth', 'sale')
+	duplicate_anonymous_transactions('auth', 'auth')
+	duplicate_anonymous_transactions('auth', 'capture', 'sale')
+	duplicate_anonymous_transactions('auth', 'capture', 'auth')
+	duplicate_anonymous_transactions('auth', 'capture', 'capture')
+	duplicate_anonymous_transactions('sale', 'void', 'void')
+	duplicate_anonymous_transactions('auth', 'void', 'void')
+	duplicate_anonymous_transactions('auth', 'capture', 'void', 'void')
+	try:
+		multiple_anonymous_transactions('capture')
+		raise AssertionError()
+	except app55.CardException, e:
+		assert e.message == 'The payment could not be processed.', e.message	
+	try:
+		multiple_anonymous_transactions('void')
 		raise AssertionError()
 	except app55.CardException, e:
 		assert e.message == 'The payment could not be processed.', e.message
