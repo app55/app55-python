@@ -17,6 +17,9 @@ class DAO(object):
 class User(DAO):
 	pass
 
+class Name(DAO):
+	pass
+
 class Address(DAO):
 	pass
 

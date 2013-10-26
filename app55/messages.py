@@ -3,6 +3,19 @@ from datetime import datetime
 from . import dao, gateway, errors
 
 class attrdict(dict):
+	def __init__(self, d):
+		self.update(d)
+
+	def update(self, *args, **kwargs):
+		if args:
+			if len(args) > 1:
+				raise TypeError("update expected at most 1 arguments, got %d" % len(args))
+			other = dict(args[0])
+			for key in other:
+				self[key] = other[key]
+		for key in kwargs:
+			self[key] = kwargs[key]
+
 	def __getattr__(self, name):
 		try:
 			return super(attrdict, self).__getattr__(name)
