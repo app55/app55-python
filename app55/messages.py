@@ -3,8 +3,11 @@ from datetime import datetime
 from . import dao, gateway, errors
 
 class attrdict(dict):
-	def __init__(self, d):
-		self.update(d)
+	def __init__(self, *args, **kwargs):
+		if len(args) > 1:
+			raise TypeError("__init__ expected at most 1 arguments, got %d" % len(args))
+		if args: self.update(args[0])
+		if kwargs: self.update(**kwargs)
 
 	def update(self, *args, **kwargs):
 		if args:
