@@ -1,3 +1,4 @@
+# -*- coding: latin-1 -*-
 import os, sys, time
 sys.path.insert(0, os.path.dirname(__file__)) 
 
@@ -161,8 +162,8 @@ def create_schedule(user, card, amount='0.10'):
 		),
 		transaction = app55.Transaction(
 			amount = amount,
-			currency = 'EUR',
-			description = 'Scheduled Transaction'
+			currency = 'GBP',
+			description = 'Scheduled Transaction for £' + str(amount)
 		),
 		schedule = app55.Schedule(
 			time_unit = 'daily',
