@@ -308,7 +308,6 @@ if __name__ == '__main__':
 	assert not transaction.transaction.code
 	response = gateway.url_opener.open(urllib2.Request('%s&next=http://dev.app55.com/v1/echo' % transaction.threeds, headers={'Accept': 'application/json'})).read()
 	response = gateway.response(json=response)
-	print response.user
 	assert response.transaction.code == 'succeeded', response.transaction.code
 	assert response.transaction.auth_code == '06603', response.transaction.auth_code
 
@@ -318,12 +317,11 @@ if __name__ == '__main__':
 	assert transaction.transaction.code == 'succeeded', transaction.transaction.code
 	assert transaction.transaction.auth_code == '06603', transaction.transaction.auth_code
 
-	card_3ds_ne = create_card(user, number='4543130000001116', ip_address='127.0.0.1').card
 	transaction = create_transaction(user, card_3ds_ne, ip_address='127.0.0.1', threeds=True, commit=False)
 	assert not transaction.threeds, transaction.threeds
+	transaction = commit_transaction(transaction.transaction)
 	assert transaction.transaction.code == 'succeeded', transaction.transaction.code
 	assert transaction.transaction.auth_code == '06603', transaction.transaction.auth_code
-	commit_transaction(transaction.transaction)
 
 
 	multiple_transactions(user, card3, 'auth', 'capture', 'void')
