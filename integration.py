@@ -1,10 +1,10 @@
-import os, sys, time
+import os, sys, time, urllib2
 sys.path.insert(0, os.path.dirname(__file__)) 
 
 import app55
 from datetime import datetime, timedelta
 
-gateway = app55.Gateway(getattr(app55.Environment, os.environ.get('APP55_API_ENVIRONMENT', 'Development')), os.environ.get('APP55_API_KEY'), os.environ.get('APP55_API_SECRET')) 
+gateway = app55.Gateway(getattr(app55.Environment, os.environ.get('APP55_API_ENVIRONMENT', 'Development')), os.environ.get('APP55_API_KEY', 'cHvG680shFTaPWhp8RHhGCSo5QbHkWxP'), os.environ.get('APP55_API_SECRET', 'zMHzGPF3QAAQQzTDoTGtGz8f5WFZFjzM')) 
 
 def create_user(email=lambda: 'example.%s@app55.com' % datetime.utcnow().strftime('%Y%m%d%H%M%S'), phone=lambda: '0123 456 7890', password=lambda: 'pa55word', confirm_password=None, first_name=lambda: 'APP55', last_name=lambda: 'USER'):
 	email = email() if callable(email) else email
@@ -39,7 +39,7 @@ def get_user(id):
 	print "DONE"
 	return response
 
-def create_card(user, ip_address=None):
+def create_card(user, number='4111111111111111', ip_address=None):
 	print "Creating card...",
 	response = gateway.create_card(
 		ip_address = ip_address,
@@ -48,7 +48,7 @@ def create_card(user, ip_address=None):
 		),
 		card = app55.Card(
 			holder_name = 'App55 User',
-			number = '4111111111111111',
+			number = number,
 			expiry = (datetime.utcnow() + timedelta(days=90)).strftime('%m/%Y'),
 			security_code = '111',
 			address = app55.Address(
@@ -85,7 +85,7 @@ def delete_card(user, card):
 	print "DONE"
 	return response
 
-def create_transaction(user, card, id=None, source=None, type=None, ip_address=None):
+def create_transaction(user, card, id=None, commit=False, source=None, type=None, ip_address=None, threeds=False):
 	print "Creating transaction...",
 	response = gateway.create_transaction(
 		ip_address = ip_address,
@@ -101,15 +101,18 @@ def create_transaction(user, card, id=None, source=None, type=None, ip_address=N
 			type = type,
 			amount = "0.10",
 			currency = 'EUR',
+			commit = commit
 		),
+		threeds=threeds,
 	).send()
 	print "DONE (transaction-id %s)" % response.transaction.id
 	return response
 
-def create_anonymous_transaction(card = None, id=None, source=None, type=None, ip_address=None, email=None):
+def create_anonymous_transaction(card = None, id=None, source=None, type=None, ip_address=None, email=None, threeds=False):
 	print "Creating anonymous transaction...",
 	response = gateway.create_transaction(
 		ip_address = ip_address,
+		threeds = threeds,
 		user = app55.User(
 			email = email,
 		),
@@ -254,7 +257,7 @@ def duplicate_anonymous_transactions(*types):
 
 if __name__ == '__main__':
 
-	print "App55 Sandbox - API Key <%s>" % gateway.api_key
+	print "App55 %s - API Key <%s>" % (os.environ.get('APP55_API_ENVIRONMENT', 'Development'), gateway.api_key)
 	print
 	
 	transaction = create_anonymous_transaction(ip_address='127.0.0.1').transaction
@@ -281,6 +284,42 @@ if __name__ == '__main__':
 
 	transaction = create_anonymous_transaction(ip_address='127.0.0.1').transaction
 	commit_transaction(transaction)
+
+
+	transaction = create_transaction(user, card3, commit=True, ip_address='127.0.0.1').transaction
+	assert transaction.code == 'succeeded'
+	assert transaction.auth_code == '06603'
+	
+
+	transaction = create_transaction(user, card1, ip_address='127.0.0.1', threeds=True)
+	assert not transaction.transaction.code
+	response = gateway.url_opener.open(urllib2.Request('%s&next=http://dev.app55.com/v1/echo' % transaction.threeds, headers={'Accept': 'application/json'})).read()
+	response = gateway.response(json=response)
+	transaction = gateway.commit_transaction(data=response.form_data, transaction=app55.Transaction(id=transaction.transaction.id)).send().transaction
+	assert transaction.code == 'succeeded', transaction.code
+	assert transaction.auth_code == '06603', transaction.auth_code
+
+	transaction = create_transaction(user, card1, commit=True, ip_address='127.0.0.1', threeds=True)
+	assert not transaction.transaction.code
+	response = gateway.url_opener.open(urllib2.Request('%s&next=http://dev.app55.com/v1/echo' % transaction.threeds, headers={'Accept': 'application/json'})).read()
+	response = gateway.response(json=response)
+	print response.user
+	assert response.transaction.code == 'succeeded', response.transaction.code
+	assert response.transaction.auth_code == '06603', response.transaction.auth_code
+
+	card_3ds_ne = create_card(user, number='4543130000001116', ip_address='127.0.0.1').card
+	transaction = create_transaction(user, card_3ds_ne, ip_address='127.0.0.1', threeds=True, commit=True)
+	assert not transaction.threeds, transaction.threeds
+	assert transaction.transaction.code == 'succeeded', transaction.transaction.code
+	assert transaction.transaction.auth_code == '06603', transaction.transaction.auth_code
+
+	card_3ds_ne = create_card(user, number='4543130000001116', ip_address='127.0.0.1').card
+	transaction = create_transaction(user, card_3ds_ne, ip_address='127.0.0.1', threeds=True, commit=False)
+	assert not transaction.threeds, transaction.threeds
+	assert transaction.transaction.code == 'succeeded', transaction.transaction.code
+	assert transaction.transaction.auth_code == '06603', transaction.transaction.auth_code
+	commit_transaction(transaction.transaction)
+
 
 	multiple_transactions(user, card3, 'auth', 'capture', 'void')
 	multiple_transactions(user, card3, 'auth', 'void')
@@ -341,7 +380,7 @@ if __name__ == '__main__':
 	time.sleep(5)
 	schedule = get_schedule(user, schedule1).schedule
 	assert schedule.end is None
-	assert schedule.next == (datetime.utcnow() + timedelta(days=1)).strftime('%Y-%m-%d')
+	assert schedule.next == (datetime.utcnow() + timedelta(days=1)).strftime('%Y-%m-%d'), schedule.next
 	assert schedule.units == 1
 	update_schedule(user, card2, app55.Schedule(
 		id = schedule.id,
@@ -371,9 +410,10 @@ if __name__ == '__main__':
 	assert card1.token in cards
 	assert card2.token in cards
 	assert card3.token in cards
-	assert len(cards) == 3
+	assert card_3ds_ne.token in cards
+	assert len(cards) == 4
 
-	for card in [card1, card2, card3]:
+	for card in [card1, card2, card3, card_3ds_ne]:
 		delete_card(user, card)
 
 	assert len(list_cards(user).cards) == 0

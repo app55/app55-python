@@ -1,4 +1,4 @@
-import urlparse, urllib, urllib2, hashlib, base64, json
+import urlparse, urllib, urllib2, hashlib, base64, json as _json
 from datetime import datetime
 from . import dao, gateway, errors
 
@@ -103,7 +103,7 @@ class Request(Message):
 			response = e.read()			
 		else:
 			response = response.read()
-		return Response(self._gateway, _json=response)
+		return Response(self._gateway, json=response)
 
 	@property
 	def form_data(self):
@@ -120,7 +120,7 @@ class Request(Message):
 	
 
 class Response(Message):
-	def __init__(self, gateway, qs=None, _json=None):
+	def __init__(self, gateway, qs=None, json=None):
 		self._gateway = gateway
 
 		kwargs = {}
@@ -134,8 +134,8 @@ class Response(Message):
 					d[k[i]] = d[k[i]] if d.has_key(k[i]) else attrdict() 
 					d = d[k[i]]
 				d[k[-1]] = v
-		elif _json:
-			kwargs = json.loads(_json, object_hook=attrdict)
+		elif json:
+			kwargs = _json.loads(json, object_hook=attrdict)
 
 		super(Response, self).__init__(**kwargs)
 
@@ -156,7 +156,7 @@ class Response(Message):
 	def form_data(self):
 		form_data = to_dotted(self._to_dict(api_key=self._gateway.api_key, api_secret=self._gateway.api_secret))
 		return urllib.urlencode(sorted(form_data.iteritems()))
-gateway.Gateway.response = lambda gateway, qs: Response(gateway, qs=qs) 
+gateway.Gateway.response = lambda gateway, qs=None, json=None: Response(gateway, qs=qs, json=json) 
 
 
 class CardCreateRequest(Request):
