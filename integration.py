@@ -1,3 +1,4 @@
+# -*- coding: latin-1 -*-
 import os, sys, time, urllib2
 sys.path.insert(0, os.path.dirname(__file__)) 
 
@@ -6,7 +7,7 @@ from datetime import datetime, timedelta
 
 gateway = app55.Gateway(getattr(app55.Environment, os.environ.get('APP55_API_ENVIRONMENT', 'Development')), os.environ.get('APP55_API_KEY', 'cHvG680shFTaPWhp8RHhGCSo5QbHkWxP'), os.environ.get('APP55_API_SECRET', 'zMHzGPF3QAAQQzTDoTGtGz8f5WFZFjzM')) 
 
-def create_user(email=lambda: 'example.%s@app55.com' % datetime.utcnow().strftime('%Y%m%d%H%M%S'), phone=lambda: '0123 456 7890', password=lambda: 'pa55word', confirm_password=None, first_name=lambda: 'APP55', last_name=lambda: 'USER'):
+def create_user(email=lambda: 'example.%s@app55.com' % datetime.utcnow().strftime('%Y%m%d%H%M%S'), phone=lambda: '0123 456 7890', password=lambda: 'pa55word', confirm_password=None, first_name=lambda: 'APPFIVEFIVE', last_name=lambda: 'USER'):
 	email = email() if callable(email) else email
 	phone = phone() if callable(phone) else phone
 	password = password() if callable(password) else password
@@ -22,7 +23,11 @@ def create_user(email=lambda: 'example.%s@app55.com' % datetime.utcnow().strftim
 			email = email,
 			phone = phone,
 			password = password,
-			password_confirm = confirm_password
+			password_confirm = confirm_password,
+			name = app55.Name( 
+				first = first_name,
+				last = last_name
+			)
 		)
 	).send()
 	print "DONE (user-id %s)" % response.user.id
@@ -160,8 +165,8 @@ def create_schedule(user, card, amount='0.10'):
 		),
 		transaction = app55.Transaction(
 			amount = amount,
-			currency = 'EUR',
-			description = 'Scheduled Transaction'
+			currency = 'GBP',
+			description = 'Scheduled Transaction for £' + str(amount)
 		),
 		schedule = app55.Schedule(
 			time_unit = 'daily',
@@ -238,7 +243,7 @@ def duplicate_transactions(user, card, *types):
 		multiple_transactions(user, card, *types)
 		raise AssertionError()
 	except app55.RequestException, e:
-		assert e.message == 'Duplicate transaction.', e.message
+		assert str(e) == 'Duplicate transaction.', e
 
 def multiple_anonymous_transactions(*types):
 	print "Testing anonymous transactions of types", types
@@ -253,7 +258,7 @@ def duplicate_anonymous_transactions(*types):
 		multiple_anonymous_transactions(*types)
 		raise AssertionError()
 	except app55.RequestException, e:
-		assert e.message == 'Duplicate transaction.', e.message
+		assert str(e) == 'Duplicate transaction.', e
 
 if __name__ == '__main__':
 
@@ -339,12 +344,12 @@ if __name__ == '__main__':
 		multiple_transactions(user, card3, 'capture')
 		raise AssertionError()
 	except app55.CardException, e:
-		assert e.message == 'The payment could not be processed.', e.message	
+		assert str(e) == 'The payment could not be processed.', e
 	try:
 		multiple_transactions(user, card3, 'void')
 		raise AssertionError()
 	except app55.CardException, e:
-		assert e.message == 'The payment could not be processed.', e.message
+		assert str(e) == 'The payment could not be processed.', e
 
 	multiple_anonymous_transactions('auth', 'capture', 'void')
 	multiple_anonymous_transactions('auth', 'void')
@@ -364,12 +369,12 @@ if __name__ == '__main__':
 		multiple_anonymous_transactions('capture')
 		raise AssertionError()
 	except app55.CardException, e:
-		assert e.message == 'The payment could not be processed.', e.message	
+		assert str(e) == 'The payment could not be processed.', e
 	try:
 		multiple_anonymous_transactions('void')
 		raise AssertionError()
 	except app55.CardException, e:
-		assert e.message == 'The payment could not be processed.', e.message
+		assert str(e) == 'The payment could not be processed.', e
 
 
 	

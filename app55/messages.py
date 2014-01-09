@@ -3,6 +3,22 @@ from datetime import datetime
 from . import dao, gateway, errors
 
 class attrdict(dict):
+	def __init__(self, *args, **kwargs):
+		if len(args) > 1:
+			raise TypeError("__init__ expected at most 1 arguments, got %d" % len(args))
+		if args: self.update(args[0])
+		if kwargs: self.update(**kwargs)
+
+	def update(self, *args, **kwargs):
+		if args:
+			if len(args) > 1:
+				raise TypeError("update expected at most 1 arguments, got %d" % len(args))
+			other = dict(args[0])
+			for key in other:
+				self[key] = other[key]
+		for key in kwargs:
+			self[key] = kwargs[key]
+
 	def __getattr__(self, name):
 		try:
 			return super(attrdict, self).__getattr__(name)
@@ -50,27 +66,59 @@ class Message(object):
 
 	def _timestamp(self):
 		return datetime.utcnow().strftime('%Y%m%d%H%M%S')
-		 
-	def _to_dict(self, api_key=None, api_secret=None):
-		dict = {}
 
+	def _encoded_list(self, in_list):
+		out_list = []
+		for v in in_list:
+			if isinstance(v, dict):
+				out_list.append(self._encoded_dict(v))
+			elif isinstance(v, list):
+				out_list.append(self._encoded_list(v))
+			elif isinstance(v, unicode):
+				out_list.append(str(v.encode('utf8')))
+			else:
+				out_list.append(v)
+		return out_list
+
+	def _encoded_dict(self, in_dict):
+		out_dict = {}
+		for k, v in in_dict.iteritems():
+			if isinstance(v, dict):
+				out_dict[k] = self._encoded_dict(v)
+			elif isinstance(v, list):
+				out_dict[k] = self._encoded_list(v)
+			elif isinstance(v, unicode):
+				out_dict[k] = str(v.encode('utf8'))
+			else:
+				out_dict[k] = v
+		return out_dict
+
+	def _to_dict(self, api_key=None, api_secret=None):
+		dictin = {}
 		for k, v in self._kwargs.iteritems():
 			if isinstance(v, dao.DAO):
-				dict[k] = v._to_dict()
+				dictin[k] = v._to_dict()
 			else:
-				dict[k] = v
+				if isinstance(v, dict):
+					dictin[k] = self._encoded_dict(v)
+				elif isinstance(v, list):
+					dictin[k] = self._encoded_list(v)
+				elif isinstance(v,unicode):
+					dictin[k] = str(v.encode('utf8'))
+				else :
+					dictin[k] = v
 
 		if api_key:
-			dict['api_key'] = api_key 
+			dictin['api_key'] = api_key 
 
 		if api_secret:
-			dict['ts'] = self._timestamp() 
-			if dict.has_key('sig'):
-				del dict['sig']
-			qs = urllib.urlencode(sorted(to_dotted(dict).iteritems())).replace('%2A', '*').replace('+', '%20')
-			dict['sig'] = base64.urlsafe_b64encode(hashlib.sha1("%s%s" % (api_secret, qs)).digest())
+			dictin['ts'] = self._timestamp() 
+			if dictin.has_key('sig'):
+				del dictin['sig']
+			qs = urllib.urlencode(sorted(to_dotted(dictin).iteritems())).replace('%2A', '*').replace('+', '%20')
+			dictin['sig'] = base64.urlsafe_b64encode(hashlib.sha1("%s%s" % (api_secret, qs)).digest())
 
-		return dict
+		return dictin
 
 	
 	def __getattr__(self, name):
