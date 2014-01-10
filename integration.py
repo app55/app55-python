@@ -44,7 +44,7 @@ def get_user(id):
 	print "DONE"
 	return response
 
-def create_card(user, number='4111111111111111', ip_address=None):
+def create_card(user, number='4111111111111111', ip_address=None, threeds=False):
 	print "Creating card...",
 	response = gateway.create_card(
 		ip_address = ip_address,
@@ -63,6 +63,7 @@ def create_card(user, number='4111111111111111', ip_address=None):
 				country = 'GB',
 			),
 		),
+		threeds=threeds
 	).send()
 	print "DONE (card-token %s)" % response.card.token
 	return response
@@ -295,6 +296,18 @@ if __name__ == '__main__':
 	assert transaction.code == 'succeeded'
 	assert transaction.auth_code == '06603'
 	
+	response = create_card(user, ip_address='127.0.0.1', threeds=True)
+	assert response.threeds
+	response = gateway.url_opener.open(urllib2.Request('%s&next=http://dev.app55.com/v1/echo' % response.threeds, headers={'Accept': 'application/json'})).read()
+	response = gateway.response(json=response)
+	card_3ds = response.card
+	transaction = create_transaction(user, card_3ds, ip_address='127.0.0.1').transaction
+	commit_transaction(card_3ds)
+
+	card_3ds_ne1 = create_card(user, ip_address='127.0.0.1', number='4543130000001116', threeds=True).card
+	transaction = create_transaction(user, card3_3ds_ne1, ip_address='127.0.0.1').transaction
+	commit_transaction(transaction)
+
 
 	transaction = create_transaction(user, card1, ip_address='127.0.0.1', threeds=True)
 	assert not transaction.transaction.code
@@ -414,9 +427,11 @@ if __name__ == '__main__':
 	assert card2.token in cards
 	assert card3.token in cards
 	assert card_3ds_ne.token in cards
-	assert len(cards) == 4
+	assert card_3ds.token in cards
+	assert card_3ds_ne1.token in cards
+	assert len(cards) == 6
 
-	for card in [card1, card2, card3, card_3ds_ne]:
+	for card in [card1, card2, card3, card_3ds_ne, card_3ds, card_3ds_ne1]:
 		delete_card(user, card)
 
 	assert len(list_cards(user).cards) == 0
