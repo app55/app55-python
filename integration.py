@@ -297,15 +297,17 @@ if __name__ == '__main__':
 	assert transaction.auth_code == '06603'
 	
 	response = create_card(user, ip_address='127.0.0.1', threeds=True)
+
 	assert response.threeds
 	response = gateway.url_opener.open(urllib2.Request('%s&next=http://dev.app55.com/v1/echo' % response.threeds, headers={'Accept': 'application/json'})).read()
 	response = gateway.response(json=response)
 	card_3ds = response.card
+	print(response.form_data)
 	transaction = create_transaction(user, card_3ds, ip_address='127.0.0.1').transaction
-	commit_transaction(card_3ds)
+	commit_transaction(transaction)
 
 	card_3ds_ne1 = create_card(user, ip_address='127.0.0.1', number='4543130000001116', threeds=True).card
-	transaction = create_transaction(user, card3_3ds_ne1, ip_address='127.0.0.1').transaction
+	transaction = create_transaction(user, card_3ds_ne1, ip_address='127.0.0.1').transaction
 	commit_transaction(transaction)
 
 
