@@ -44,6 +44,16 @@ def get_user(id):
 	print "DONE"
 	return response
 
+def update_user(id):
+	print "not yet implemented"
+
+	return null
+
+def authenticate_user(id):
+	print "not yet implemented"
+
+	return null
+
 def create_card(user, number='4111111111111111', ip_address=None, threeds=False):
 	print "Creating card...",
 	response = gateway.create_card(
@@ -154,6 +164,10 @@ def commit_transaction(transaction):
 	).send()
 	print "DONE"
 	return response
+
+def cancel_transaction(transaction):
+	print "not yet implemented"
+	return null
 
 def create_schedule(user, card, amount='0.10'):
 	print "Creating schedule...",
@@ -398,6 +412,7 @@ if __name__ == '__main__':
 	time.sleep(5)
 	schedule = get_schedule(user, schedule1).schedule
 	assert schedule.end is None
+	print('schedule1 test: received: ',schedule.next, 'but expected', (datetime.utcnow() + timedelta(days=1)).strftime('%Y-%m-%d'), schedule.next)
 	assert schedule.next == (datetime.utcnow() + timedelta(days=1)).strftime('%Y-%m-%d'), schedule.next
 	assert schedule.units == 1
 	update_schedule(user, card2, app55.Schedule(
