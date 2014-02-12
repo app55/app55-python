@@ -116,7 +116,7 @@ def create_transaction(user, card, id=None, commit=False, source=None, type=None
 			source = source,
 			type = type,
 			amount = "0.10",
-			currency = 'EUR',
+			currency = 'GBP',
 			commit = commit
 		),
 		threeds=threeds,
@@ -149,7 +149,7 @@ def create_anonymous_transaction(card = None, id=None, source=None, type=None, i
 			source = source,
 			type = type,
 			amount = '0.10',
-			currency = 'EUR',
+			currency = 'GBP',
 		),
 	).send()
 	print "DONE (transaction-id %s)" % response.transaction.id
@@ -281,6 +281,7 @@ if __name__ == '__main__':
 	print
 	
 	transaction = create_anonymous_transaction(ip_address='127.0.0.1').transaction
+	
 	commit_transaction(transaction)
 
 	user = create_user().user
@@ -307,13 +308,13 @@ if __name__ == '__main__':
 
 
 	transaction = create_transaction(user, card3, commit=True, ip_address='127.0.0.1').transaction
-	assert transaction.code == 'succeeded'
-	assert transaction.auth_code == '06603'
-	
-	response = create_card(user, ip_address='127.0.0.1', threeds=True)
+	assert transaction.code == 'succeeded', transaction.code
+	assert transaction.auth_code == '06603', transaction.auth_code
 
-	assert response.threeds
-	response = gateway.url_opener.open(urllib2.Request('%s&next=http://dev.app55.com/v1/echo' % response.threeds, headers={'Accept': 'application/json'})).read()
+	print "Begin 3DS ..."
+	response = create_card(user, ip_address='127.0.0.1', threeds=True)
+	assert response.threeds, response.form_data
+	response = gateway.url_opener.open(urllib2.Request('%s&next=%s/echo' % (response.threeds, gateway.environment.base_url), headers={'Accept': 'application/json'})).read()
 	response = gateway.response(json=response)
 	card_3ds = response.card
 	print(response.form_data)
@@ -327,7 +328,7 @@ if __name__ == '__main__':
 
 	transaction = create_transaction(user, card1, ip_address='127.0.0.1', threeds=True)
 	assert not transaction.transaction.code
-	response = gateway.url_opener.open(urllib2.Request('%s&next=http://dev.app55.com/v1/echo' % transaction.threeds, headers={'Accept': 'application/json'})).read()
+	response = gateway.url_opener.open(urllib2.Request('%s&next=%s/echo' % (transaction.threeds, gateway.environment.base_url), headers={'Accept': 'application/json'})).read()
 	response = gateway.response(json=response)
 	transaction = gateway.commit_transaction(data=response.form_data, transaction=app55.Transaction(id=transaction.transaction.id)).send().transaction
 	assert transaction.code == 'succeeded', transaction.code
@@ -335,7 +336,7 @@ if __name__ == '__main__':
 
 	transaction = create_transaction(user, card1, commit=True, ip_address='127.0.0.1', threeds=True)
 	assert not transaction.transaction.code
-	response = gateway.url_opener.open(urllib2.Request('%s&next=http://dev.app55.com/v1/echo' % transaction.threeds, headers={'Accept': 'application/json'})).read()
+	response = gateway.url_opener.open(urllib2.Request('%s&next=%s/echo' % (transaction.threeds, gateway.environment.base_url), headers={'Accept': 'application/json'})).read()
 	response = gateway.response(json=response)
 	assert response.transaction.code == 'succeeded', response.transaction.code
 	assert response.transaction.auth_code == '06603', response.transaction.auth_code
@@ -351,7 +352,7 @@ if __name__ == '__main__':
 	transaction = commit_transaction(transaction.transaction)
 	assert transaction.transaction.code == 'succeeded', transaction.transaction.code
 	assert transaction.transaction.auth_code == '06603', transaction.transaction.auth_code
-
+	print "Done 3DS.\n"
 
 	multiple_transactions(user, card3, 'auth', 'capture', 'void')
 	multiple_transactions(user, card3, 'auth', 'void')
