@@ -475,4 +475,15 @@ if __name__ == '__main__':
 	print "DONE"
 
 	assert user.id == user2.id
+    
+	print "Deleting user...",	
+	user2 = gateway.delete_user(
+		user = app55.User(
+			id = user.id,
+			email = email,
+			password = 'password01',
+			password_confirm = 'password01',
+		)
+	).send().user
+	print "DONE"
 	
